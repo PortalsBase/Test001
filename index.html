@@ -20,14 +20,14 @@
 <input type="text" id="userInput" placeholder="Type your message..." />
 <button id="sendBtn">Send</button>
 
-<script type="module">
-import { API_KEY } from './config.js'; // Same folder, no need for subfolder
-
+<script>
+const API_KEY = 'q524K8SVBkM1eSh43WHcXg'; // API key directly in the code
 const chatDiv = document.getElementById('chat');
 const userInput = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 
 async function sendMessage(message) {
+    // Display user's message
     chatDiv.innerHTML += `<div class="message user"><strong>You:</strong> ${message}</div>`;
 
     try {
@@ -42,6 +42,7 @@ async function sendMessage(message) {
 
         const data = await response.json();
         const aiReply = data?.text || 'No response from AI';
+
         chatDiv.innerHTML += `<div class="message ai"><strong>AI:</strong> ${aiReply}</div>`;
         chatDiv.scrollTop = chatDiv.scrollHeight;
 

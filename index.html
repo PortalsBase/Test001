@@ -1,84 +1,170 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>AI Chat Example</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<title>AI Chat App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee;padding:24px}
-.card{background:#1b1b1b;padding:16px;border-radius:8px;max-width:760px;margin:0 auto}
-textarea,input,select{width:100%;padding:8px;margin:6px 0;border-radius:6px;background:#0f0f0f;border:1px solid #222;color:#eee}
-button{padding:10px 14px;border-radius:6px;border:none;background:#2196f3;color:#fff;cursor:pointer}
-pre{background:#0b0b0b;padding:12px;border-radius:6px;overflow:auto}
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+#chat-container {
+    background: #1b1b1b;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 20px;
+    padding: 10px;
+}
+#chat {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 400px;
+    padding: 10px;
+}
+.message {
+    padding: 8px 12px;
+    margin: 6px 0;
+    border-radius: 12px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+.user { 
+    background: #2196f3; 
+    color: #fff; 
+    align-self: flex-end;
+}
+.ai { 
+    background: #333; 
+    color: #eee; 
+    align-self: flex-start;
+}
+#input-container {
+    display: flex;
+    margin-top: 10px;
+    gap: 5px;
+}
+#prompt { 
+    flex: 1;
+    padding: 8px; 
+    border-radius: 8px; 
+    border: 1px solid #222; 
+    background: #0f0f0f; 
+    color: #eee; 
+}
+button { 
+    padding: 8px 12px; 
+    border-radius: 8px; 
+    border: none; 
+    background: #2196f3; 
+    color: #fff; 
+    cursor: pointer; 
+}
+#model {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #222;
+    background: #0f0f0f;
+    color: #eee;
+}
+.typing { font-style: italic; color: #aaa; margin: 4px 0; }
 </style>
 </head>
 <body>
-<div class="card">
-<h2>AI Chat Example</h2>
 
-<label>Model</label>
-<select id="model">
-    <option value="pi">pi (Aivrix)</option>
-    <option value="pc">pc (Gemma 3 4B)</option>
-</select>
+<div id="chat-container">
+    <div id="chat"></div>
 
-<label>Prompt</label>
-<textarea id="prompt" rows="6">Say hello and introduce yourself.</textarea>
-
-<div style="display:flex;gap:8px;margin-top:8px">
-    <button id="send">Send</button>
-    <button id="clear">Clear</button>
-</div>
-
-<h3>Response</h3>
-<pre id="response">(no response yet)</pre>
+    <div id="input-container">
+        <select id="model">
+            <option value="pi">pi (Aivrix)</option>
+            <option value="pc">pc (Gemma 3 4B)</option>
+        </select>
+        <input type="text" id="prompt" placeholder="Type your message..." />
+        <button id="send">Send</button>
+    </div>
 </div>
 
 <script>
-const API_KEY = 'TgpGudR3iMVSiTqAwSt2oA';
-const API_HOST = 'https://ai.portalsbase.com'; // Can use relative path if hosted together
+const API_KEY = 'q524K8SVBkM1eSh43WHcXg';
+const API_HOST = 'https://ai.portalsbase.com';
 
-const sendBtn = document.getElementById('send');
-const clearBtn = document.getElementById('clear');
-const respEl = document.getElementById('response');
+const chatEl = document.getElementById('chat');
 const promptEl = document.getElementById('prompt');
+const sendBtn = document.getElementById('send');
 const modelEl = document.getElementById('model');
 
-async function callGenerate(prompt, model='pi'){
+let conversation = []; // Stores all messages for this session
+
+function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.className = 'message ' + sender;
+    div.textContent = text;
+    chatEl.appendChild(div);
+    chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+async function callGenerate(messages, model='pi') {
+    const promptText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
     const url = API_HOST + '/api/generate';
-    try {
-        const r = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + API_KEY
-            },
-            body: JSON.stringify({ prompt, model })
-        });
-        const data = await r.json();
-        if(!r.ok) throw new Error(data.error || JSON.stringify(data));
-        return data;
-    } catch(err) { throw err; }
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + API_KEY
+        },
+        body: JSON.stringify({ prompt: promptText, model })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || JSON.stringify(data));
+    return data.response || '';
 }
 
 sendBtn.addEventListener('click', async () => {
-    respEl.textContent = 'Thinking...';
+    const message = promptEl.value.trim();
+    if (!message) return;
+    promptEl.value = '';
+
+    addMessage(message, 'user');
+    conversation.push({ role: 'user', content: message });
+
+    const typingEl = document.createElement('div');
+    typingEl.className = 'typing';
+    typingEl.textContent = 'AI is typing...';
+    chatEl.appendChild(typingEl);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
     sendBtn.disabled = true;
+
     try {
-        const prompt = promptEl.value;
         const model = modelEl.value;
-        const res = await callGenerate(prompt, model);
-        // The AI reply is in res.response
-        respEl.textContent = res.response || JSON.stringify(res, null, 2);
+        const aiReply = await callGenerate(conversation, model);
+        conversation.push({ role: 'ai', content: aiReply });
+
+        chatEl.removeChild(typingEl);
+        addMessage(aiReply, 'ai');
     } catch(e) {
-        respEl.textContent = 'Error: ' + e.message;
-    } finally { sendBtn.disabled = false; }
+        chatEl.removeChild(typingEl);
+        addMessage('Error: ' + e.message, 'ai');
+    } finally {
+        sendBtn.disabled = false;
+    }
 });
 
-clearBtn.addEventListener('click', () => {
-    promptEl.value = '';
-    respEl.textContent = '(no response yet)';
+promptEl.addEventListener('keypress', e => {
+    if(e.key === 'Enter') sendBtn.click();
 });
 </script>
+
 </body>
 </html>

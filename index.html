@@ -1,76 +1,84 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>AI Chat</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
-        #userInput { width: 70%; padding: 5px; }
-        #sendBtn { padding: 5px 10px; }
-        #modelSelect { padding: 5px; margin-left: 5px; }
-        .message { margin: 5px 0; }
-        .user { color: blue; }
-        .ai { color: green; }
-    </style>
+<meta charset="utf-8" />
+<title>AI Chat Example</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee;padding:24px}
+.card{background:#1b1b1b;padding:16px;border-radius:8px;max-width:760px;margin:0 auto}
+textarea,input,select{width:100%;padding:8px;margin:6px 0;border-radius:6px;background:#0f0f0f;border:1px solid #222;color:#eee}
+button{padding:10px 14px;border-radius:6px;border:none;background:#2196f3;color:#fff;cursor:pointer}
+pre{background:#0b0b0b;padding:12px;border-radius:6px;overflow:auto}
+</style>
 </head>
 <body>
+<div class="card">
+<h2>AI Chat Example</h2>
 
-<h1>AI Chat</h1>
-<div id="chat"></div>
-
-<input type="text" id="userInput" placeholder="Type your message..." />
-<select id="modelSelect">
-    <option value="pi" selected>pi (Aivrix)</option>
+<label>Model</label>
+<select id="model">
+    <option value="pi">pi (Aivrix)</option>
     <option value="pc">pc (Gemma 3 4B)</option>
 </select>
-<button id="sendBtn">Send</button>
+
+<label>Prompt</label>
+<textarea id="prompt" rows="6">Say hello and introduce yourself.</textarea>
+
+<div style="display:flex;gap:8px;margin-top:8px">
+    <button id="send">Send</button>
+    <button id="clear">Clear</button>
+</div>
+
+<h3>Response</h3>
+<pre id="response">(no response yet)</pre>
+</div>
 
 <script>
-const API_KEY = 'TgpGudR3iMVSiTqAwSt2oA'; // API key directly in code
-const chatDiv = document.getElementById('chat');
-const userInput = document.getElementById('userInput');
-const sendBtn = document.getElementById('sendBtn');
-const modelSelect = document.getElementById('modelSelect');
+const API_KEY = 'TgpGudR3iMVSiTqAwSt2oA';
+const API_HOST = 'https://ai.portalsbase.com'; // Can use relative path if hosted together
 
-async function sendMessage(message) {
-    // Show user message
-    chatDiv.innerHTML += `<div class="message user"><strong>You:</strong> ${message}</div>`;
+const sendBtn = document.getElementById('send');
+const clearBtn = document.getElementById('clear');
+const respEl = document.getElementById('response');
+const promptEl = document.getElementById('prompt');
+const modelEl = document.getElementById('model');
 
-    const model = modelSelect.value;
-
+async function callGenerate(prompt, model='pi'){
+    const url = API_HOST + '/api/generate';
     try {
-        const response = await fetch('https://ai.portalsbase.com/api/generate', {
+        const r = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + API_KEY
             },
-            body: JSON.stringify({ prompt: message, model })
+            body: JSON.stringify({ prompt, model })
         });
-
-        const data = await response.json();
-        const aiReply = data?.text || 'No response from AI';
-
-        chatDiv.innerHTML += `<div class="message ai"><strong>AI:</strong> ${aiReply}</div>`;
-        chatDiv.scrollTop = chatDiv.scrollHeight;
-
-    } catch (err) {
-        chatDiv.innerHTML += `<div class="message ai" style="color:red;"><strong>AI:</strong> Error: ${err.message}</div>`;
-    }
+        const data = await r.json();
+        if(!r.ok) throw new Error(data.error || JSON.stringify(data));
+        return data;
+    } catch(err) { throw err; }
 }
 
-sendBtn.addEventListener('click', () => {
-    const message = userInput.value.trim();
-    if (!message) return;
-    sendMessage(message);
-    userInput.value = '';
+sendBtn.addEventListener('click', async () => {
+    respEl.textContent = 'Thinking...';
+    sendBtn.disabled = true;
+    try {
+        const prompt = promptEl.value;
+        const model = modelEl.value;
+        const res = await callGenerate(prompt, model);
+        // The AI reply is in res.response
+        respEl.textContent = res.response || JSON.stringify(res, null, 2);
+    } catch(e) {
+        respEl.textContent = 'Error: ' + e.message;
+    } finally { sendBtn.disabled = false; }
 });
 
-userInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendBtn.click();
+clearBtn.addEventListener('click', () => {
+    promptEl.value = '';
+    respEl.textContent = '(no response yet)';
 });
 </script>
-
 </body>
 </html>
